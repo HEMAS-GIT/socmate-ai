@@ -59,14 +59,25 @@ function App() {
       {error && <p className="error">{error}</p>}
 
       {result && (
-        <div className="result-box">
-          <h3>Result</h3>
-          <p><strong>Filename:</strong> {result.filename}</p>
-          <p><strong>Size:</strong> {result.size} bytes</p>
-          <p><strong>Preview:</strong></p>
-          <pre>{result.preview}</pre>
-        </div>
-      )}
+  <div className="result-box">
+    <h3>Analysis Result</h3>
+
+    <div className={`severity-badge severity-${result.analysis.severity.toLowerCase()}`}>
+      {result.analysis.severity} Severity
+    </div>
+
+    <p><strong>Summary:</strong> {result.analysis.summary}</p>
+    <p><strong>Recommended Action:</strong> {result.analysis.recommended_action}</p>
+
+    <details>
+      <summary>View file details</summary>
+      <p><strong>Filename:</strong> {result.filename}</p>
+      <p><strong>Size:</strong> {result.size} bytes</p>
+      <p><strong>Preview:</strong></p>
+      <pre>{result.preview}</pre>
+    </details>
+  </div>
+)}
     </div>
   )
 }
