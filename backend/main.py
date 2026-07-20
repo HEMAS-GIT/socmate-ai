@@ -6,11 +6,13 @@ from fastapi import FastAPI, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
 from google import genai
-client = genai.Client(api_key="YOUR_API_KEY")
-# Example usage:
-response = client.models.generate_content(model="gemini-2.5-flash", contents="Hello")
+
+# Load environment variables (ensure GEMINI_API_KEY is in your .env or Render env vars)
 load_dotenv()
-genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
+
+# Initialize the new Client
+# The SDK automatically picks up GEMINI_API_KEY from the environment
+client = genai.Client()
 
 app = FastAPI()
 
@@ -21,11 +23,11 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-model = genai.GenerativeModel("gemini-flash-latest")
+# Using gemini-2.0-flash as a modern, stable model
+MODEL_ID = "gemini-2.0-flash"
 
-# In-memory history store (resets when server restarts — fine for a hackathon demo)
+# In-memory history store
 history = []
-
 
 def analyze_log_text(text: str):
     log_sample = text[:3000]
@@ -45,9 +47,14 @@ Log data:
 """
 
     try:
-        response = model.generate_content(prompt)
+        # Modern SDK call pattern
+        response = client.models.generate_content(
+            model=MODEL_ID,
+            contents=prompt
+        )
         raw_text = response.text.strip()
 
+        # Clean markdown formatting if present
         if raw_text.startswith("```"):
             raw_text = raw_text.strip("`")
             if raw_text.startswith("json"):
@@ -64,20 +71,16 @@ Log data:
 
     return analysis
 
-
 @app.get("/")
 def read_root():
     return {"message": "SOCMate AI backend is running"}
 
-
 @app.post("/upload")
 async def upload_logs(files: list[UploadFile] = File(...)):
     results = []
-
     for file in files:
         content = await file.read()
         text = content.decode("utf-8", errors="ignore")
-
         analysis = analyze_log_text(text)
 
         entry = {
@@ -89,22 +92,17 @@ async def upload_logs(files: list[UploadFile] = File(...)):
             "analysis": analysis,
             "timestamp": datetime.utcnow().isoformat()
         }
-
         history.append(entry)
         results.append(entry)
-
     return {"results": results}
-
 
 @app.get("/history")
 def get_history():
     return {"history": history}
 
-
 @app.post("/chat/{incident_id}")
 async def chat_about_incident(incident_id: str, question: dict):
     incident = next((h for h in history if h["id"] == incident_id), None)
-
     if not incident:
         return {"answer": "Incident not found."}
 
@@ -112,7 +110,6 @@ async def chat_about_incident(incident_id: str, question: dict):
 
     prompt = f"""
 You are a cybersecurity SOC analyst assistant helping a colleague understand a specific security incident.
-
 Incident details:
 - Severity: {incident['analysis']['severity']}
 - Summary: {incident['analysis']['summary']}
@@ -120,12 +117,14 @@ Incident details:
 - Raw log excerpt: {incident['full_text']}
 
 The analyst asks: "{user_question}"
-
 Give a clear, concise, helpful answer (2-4 sentences) as a knowledgeable SOC assistant.
 """
 
     try:
-        response = model.generate_content(prompt)
+        response = client.models.generate_content(
+            model=MODEL_ID,
+            contents=prompt
+        )
         answer = response.text.strip()
     except Exception as e:
         answer = f"Sorry, I couldn't process that. Error: {str(e)}"
