@@ -1,6 +1,8 @@
 import os
 import json
 import uuid
+import asyncio
+from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
 from fastapi import FastAPI, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
@@ -22,6 +24,8 @@ app.add_middleware(
 model = genai.GenerativeModel("gemini-flash-latest")
 
 history = []
+
+executor = ThreadPoolExecutor(max_workers=5)
 
 
 def analyze_log_text(text: str):
@@ -69,24 +73,29 @@ def read_root():
 
 @app.post("/upload")
 async def upload_logs(files: list[UploadFile] = File(...)):
-    results = []
-
+    file_data = []
     for file in files:
         content = await file.read()
         text = content.decode("utf-8", errors="ignore")
+        file_data.append((file.filename, content, text))
 
-        analysis = analyze_log_text(text)
+    loop = asyncio.get_event_loop()
+    analyses = await asyncio.gather(*[
+        loop.run_in_executor(executor, analyze_log_text, text)
+        for (_, _, text) in file_data
+    ])
 
+    results = []
+    for (filename, content, text), analysis in zip(file_data, analyses):
         entry = {
             "id": str(uuid.uuid4()),
-            "filename": file.filename,
+            "filename": filename,
             "size": len(content),
             "preview": text[:500],
             "full_text": text[:3000],
             "analysis": analysis,
             "timestamp": datetime.utcnow().isoformat()
         }
-
         history.append(entry)
         results.append(entry)
 

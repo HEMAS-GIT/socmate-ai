@@ -20,6 +20,7 @@ function App() {
   const [files, setFiles] = useState([])
   const [results, setResults] = useState([])
   const [loading, setLoading] = useState(false)
+  const [loadingMessage, setLoadingMessage] = useState('Analyzing...')
   const [error, setError] = useState(null)
   const [history, setHistory] = useState([])
 
@@ -61,6 +62,19 @@ function App() {
     setLoading(true)
     setError(null)
 
+    const messages = [
+      'Waking up AI engine...',
+      'Reading log content...',
+      'Running threat analysis...',
+      'Almost done...',
+    ]
+    let msgIndex = 0
+    setLoadingMessage(messages[0])
+    const msgInterval = setInterval(() => {
+      msgIndex = (msgIndex + 1) % messages.length
+      setLoadingMessage(messages[msgIndex])
+    }, 4000)
+
     const formData = new FormData()
     files.forEach((f) => formData.append('files', f))
 
@@ -78,6 +92,7 @@ function App() {
     } catch (err) {
       setError('Something went wrong. Is the backend running?')
     } finally {
+      clearInterval(msgInterval)
       setLoading(false)
     }
   }
@@ -156,7 +171,7 @@ function App() {
               Upload security logs and get instant AI-powered threat analysis,
               severity classification, and an interactive copilot to help you respond faster.
             </p>
-            <button className="landing-cta" onClick={() => setActiveTab("dashboard")}>
+            <button className="landing-cta" onClick={() => setActiveTab('upload')}>
               Launch Dashboard →
             </button>
           </div>
@@ -173,29 +188,17 @@ function App() {
         </div>
 
         <div className="landing-features">
-          <div
-  className="landing-feature-card"
-  onClick={() => setActiveTab("upload")}
-  style={{ cursor: "pointer" }}
->
+          <div className="landing-feature-card">
             <div className="feature-icon">📤</div>
             <h3>Log Analysis</h3>
             <p>Upload one or more security logs and get AI-generated severity ratings and summaries in seconds.</p>
           </div>
-          <div
-  className="landing-feature-card"
-  onClick={() => setActiveTab("dashboard")}
-  style={{ cursor: "pointer" }}
->
+          <div className="landing-feature-card">
             <div className="feature-icon">📊</div>
             <h3>Live Dashboard</h3>
             <p>See a real-time breakdown of every incident you've analyzed, with charts and a timeline.</p>
           </div>
-          <div
-  className="landing-feature-card"
-  onClick={() => setActiveTab("copilot")}
-  style={{ cursor: "pointer" }}
->
+          <div className="landing-feature-card">
             <div className="feature-icon">🤖</div>
             <h3>AI Copilot</h3>
             <p>Ask follow-up questions about any incident and get context-aware answers from Gemini.</p>
@@ -260,7 +263,7 @@ function App() {
             <div className="upload-box">
               <input type="file" multiple onChange={handleFileChange} />
               <button onClick={handleUpload} disabled={loading}>
-                {loading ? 'Analyzing...' : 'Upload & Analyze'}
+                {loading ? loadingMessage : 'Upload & Analyze'}
               </button>
             </div>
 
