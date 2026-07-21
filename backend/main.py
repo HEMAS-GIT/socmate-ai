@@ -21,7 +21,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-model = genai.GenerativeModel("gemini-2.0-flash-lite")
+model = genai.GenerativeModel("gemini-flash-latest")
 history = []
 
 executor = ThreadPoolExecutor(max_workers=5)
